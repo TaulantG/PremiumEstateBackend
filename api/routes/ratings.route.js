@@ -5,7 +5,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 const router = express.Router();
 
 //
-// ⭐ CREATE / UPDATE RATING
+// ⭐ CREATE OR UPDATE RATING
 //
 router.post("/", verifyToken, async (req, res) => {
   const userId = req.userId;
@@ -16,7 +16,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 
   if (rating < 1 || rating > 5) {
-    return res.status(400).json({ message: "Invalid rating" });
+    return res.status(400).json({ message: "Invalid rating value" });
   }
 
   try {
@@ -29,30 +29,50 @@ router.post("/", verifyToken, async (req, res) => {
       [userId, postId, rating, rating]
     );
 
-    res.status(200).json({ message: "Rating saved" });
+    res.status(200).json({ message: "Rating saved successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Error saving rating" });
+    console.log("POST /ratings error:", err);
+    res.status(500).json({ message: "Database error" });
   }
 });
 
 //
-// ⭐ GET AVERAGE RATING
+// ⭐ GET AVERAGE + USER RATING
 //
-router.get("/:postId", async (req, res) => {
+router.get("/:postId", verifyToken, async (req, res) => {
   const { postId } = req.params;
+  const userId = req.userId;
 
   try {
-    const [rows] = await db.query(
+    // ⭐ Get average rating + total reviews
+    const [avgRows] = await db.query(
       `
-      SELECT AVG(rating) as avgRating, COUNT(*) as total
+      SELECT 
+        AVG(rating) as avgRating, 
+        COUNT(*) as total
       FROM ratings
       WHERE postId = ?
       `,
       [postId]
     );
 
-    res.status(200).json(rows[0]);
+    // ⭐ Get current user's rating
+    const [userRows] = await db.query(
+      `
+      SELECT rating 
+      FROM ratings
+      WHERE postId = ? AND userId = ?
+      `,
+      [postId, userId]
+    );
+
+    res.status(200).json({
+      avgRating: avgRows[0].avgRating || 0,
+      total: avgRows[0].total || 0,
+      userRating: userRows.length > 0 ? userRows[0].rating : 0,
+    });
   } catch (err) {
+    console.log("GET /ratings/:postId error:", err);
     res.status(500).json({ message: "Error fetching ratings" });
   }
 });
