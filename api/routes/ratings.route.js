@@ -4,9 +4,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-//
-// ⭐ CREATE OR UPDATE RATING
-//
+
 router.post("/", verifyToken, async (req, res) => {
   const userId = req.userId;
   const { postId, rating } = req.body;
@@ -36,15 +34,13 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-//
-// ⭐ GET AVERAGE + USER RATING
-//
+
 router.get("/:postId", verifyToken, async (req, res) => {
   const { postId } = req.params;
   const userId = req.userId;
 
   try {
-    // ⭐ Get average rating + total reviews
+
     const [avgRows] = await db.query(
       `
       SELECT 
